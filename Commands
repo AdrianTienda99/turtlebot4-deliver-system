@@ -18,3 +18,7 @@ ros2 launch turtlebot4_navigation nav2.launch.py
 
 ros2 launch turtlebot4_viz view_robot.launch.py
 
+UR ARM: 
+
+python3 ~/ur_bridge/ur_bridge.py
+
