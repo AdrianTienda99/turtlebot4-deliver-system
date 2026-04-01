@@ -6,6 +6,7 @@ export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_LOCALHOST_ONLY=0
 unset CYCLONEDDS_URI
 
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
 python3 /root/delivery_robot_project/scripts/delivery_controller.py
 
