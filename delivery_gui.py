@@ -12,9 +12,9 @@ from PyQt5.QtWidgets import (
     QMessageBox, QTextEdit, QComboBox, QFrame, QSizePolicy, QLineEdit,
     QListWidget, QListWidgetItem
 )
-from PyQt5.QtCore import QTimer, Qt, QRectF, QPointF
+from PyQt5.QtCore import QTimer, Qt, QRectF
 from PyQt5.QtGui import (
-    QPixmap, QPainter, QColor, QPen, QBrush, QFont, QPainterPath, QPolygonF
+    QPixmap, QPainter, QColor, QPen, QBrush, QFont, QPainterPath
 )
 
 import rclpy
@@ -164,10 +164,10 @@ class MapView(QLabel):
         self.clicked_goal_yaw = 0.0
         self.dragging_orientation = False
 
-        self.map_margin = 18
+        self.map_margin = 12
 
         self.setAlignment(Qt.AlignCenter)
-        self.setMinimumSize(1050, 790)
+        self.setMinimumSize(1120, 820)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setStyleSheet(
             'background-color: #ffffff; border-radius: 22px; border: 1px solid #d9e0ea;'
@@ -214,15 +214,42 @@ class MapView(QLabel):
 
     def get_point_style(self, name: str):
         lname = name.lower()
-
         if 'point_a' in lname:
-            color = QColor(220, 38, 38)   # red
+            return QColor(220, 38, 38)
         elif 'point_b' in lname:
-            color = QColor(37, 99, 235)   # blue
-        else:
-            color = QColor(249, 115, 22)  # orange
+            return QColor(37, 99, 235)
+        return QColor(249, 115, 22)
 
-        return color
+    def should_draw_point(self, name: str) -> bool:
+        lname = name.lower()
+        if lname == 'point_a_nav':
+            return False
+        if lname == 'point_b_nav':
+            return False
+        return True
+
+    def get_b_reference_point(self):
+        if 'point_b_dock' in self.points:
+            return self.points['point_b_dock']
+        if 'point_b_nav' in self.points:
+            return self.points['point_b_nav']
+
+        for name, point in self.points.items():
+            if 'point_b' in name.lower():
+                return point
+        return None
+
+    def get_visual_offset(self, name: str):
+        """
+        Visual-only shift so A and B markers appear inside the white area.
+        This does NOT change the actual navigation coordinates.
+        """
+        lname = name.lower()
+        if 'point_b' in lname:
+            return (34.0, 0.0)   # shift B to the right
+        if 'point_a' in lname:
+            return (26.0, 0.0)   # shift A to the right
+        return (0.0, 0.0)
 
     def world_to_map_pixel(self, x_world, y_world):
         origin_x = float(self.map_origin[0])
@@ -303,32 +330,54 @@ class MapView(QLabel):
         self.dragging_orientation = False
         self.update()
 
+    def clamp_text_position(self, x, y, text, painter):
+        fm = painter.fontMetrics()
+        tw = fm.horizontalAdvance(text)
+        th = fm.height()
+
+        x = max(4, min(x, self.map_width - tw - 4))
+        y = max(th, min(y, self.map_height - 4))
+        return x, y
+
     def draw_named_points(self, painter):
+        font = QFont('Arial', 6, QFont.Bold)
+        painter.setFont(font)
+
         for name, point in self.points.items():
+            if not self.should_draw_point(name):
+                continue
+
             x_pix, y_pix = self.world_to_map_pixel(point['x'], point['y'])
+            off_x, off_y = self.get_visual_offset(name)
+            x_pix += off_x
+            y_pix += off_y
+
             color = self.get_point_style(name)
             selected = (name == self.selected_point)
 
-            outer_r = 10 if selected else 8
-            inner_r = 6 if selected else 5
+            outer_r = 4.5 if selected else 3.5
+            inner_r = 1.8 if selected else 1.3
 
             if selected:
-                painter.setPen(QPen(QColor(16, 185, 129), 2.5))
+                painter.setPen(QPen(QColor(16, 185, 129), 1.0))
                 painter.setBrush(Qt.NoBrush)
-                painter.drawEllipse(QRectF(x_pix - 15, y_pix - 15, 30, 30))
+                painter.drawEllipse(QRectF(x_pix - 7, y_pix - 7, 14, 14))
 
-            painter.setPen(QPen(color, 2))
+            painter.setPen(QPen(color, 1.0))
             painter.setBrush(QBrush(color))
             painter.drawEllipse(QRectF(x_pix - outer_r, y_pix - outer_r, outer_r * 2, outer_r * 2))
 
-            painter.setPen(QPen(QColor(255, 255, 255), 1))
+            painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(QColor(255, 255, 255)))
             painter.drawEllipse(QRectF(x_pix - inner_r, y_pix - inner_r, inner_r * 2, inner_r * 2))
 
-            painter.setPen(QPen(Qt.black, 1))
-            font = QFont('Arial', 10, QFont.Bold)
-            painter.setFont(font)
-            painter.drawText(int(x_pix + 12), int(y_pix - 10), self.get_display_name(name))
+            label = self.get_display_name(name)
+            tx = x_pix + 6
+            ty = y_pix - 4
+            tx, ty = self.clamp_text_position(tx, ty, label, painter)
+
+            painter.setPen(QPen(Qt.black, 0.8))
+            painter.drawText(int(tx), int(ty), label)
 
     def draw_plan(self, painter):
         if len(self.ros_node.plan_points) < 2:
@@ -342,7 +391,7 @@ class MapView(QLabel):
             xp, yp = self.world_to_map_pixel(xw, yw)
             path.lineTo(xp, yp)
 
-        painter.setPen(QPen(QColor(59, 130, 246, 210), 2.2))
+        painter.setPen(QPen(QColor(59, 130, 246, 190), 1.3))
         painter.drawPath(path)
 
     def draw_robot(self, painter):
@@ -351,27 +400,17 @@ class MapView(QLabel):
 
         x_pix, y_pix = self.world_to_map_pixel(self.ros_node.robot_x, self.ros_node.robot_y)
 
-        painter.setPen(QPen(QColor(37, 99, 235), 2))
+        painter.setPen(QPen(QColor(37, 99, 235), 1.2))
         painter.setBrush(QBrush(QColor(37, 99, 235)))
-        painter.drawEllipse(QRectF(x_pix - 6, y_pix - 6, 12, 12))
+        painter.drawEllipse(QRectF(x_pix - 4, y_pix - 4, 8, 8))
 
         if self.ros_node.robot_yaw is not None:
-            arrow_len = 20
+            arrow_len = 12
             end_x = x_pix + arrow_len * math.cos(self.ros_node.robot_yaw)
             end_y = y_pix - arrow_len * math.sin(self.ros_node.robot_yaw)
 
-            painter.setPen(QPen(QColor(220, 38, 38), 2.4))
+            painter.setPen(QPen(QColor(220, 38, 38), 1.5))
             painter.drawLine(int(x_pix), int(y_pix), int(end_x), int(end_y))
-
-            head_size = 5
-            angle1 = self.ros_node.robot_yaw + math.radians(150)
-            angle2 = self.ros_node.robot_yaw - math.radians(150)
-            hx1 = end_x + head_size * math.cos(angle1)
-            hy1 = end_y - head_size * math.sin(angle1)
-            hx2 = end_x + head_size * math.cos(angle2)
-            hy2 = end_y - head_size * math.sin(angle2)
-            painter.drawLine(int(end_x), int(end_y), int(hx1), int(hy1))
-            painter.drawLine(int(end_x), int(end_y), int(hx2), int(hy2))
 
     def draw_clicked_goal(self, painter):
         if self.clicked_goal_world is None:
@@ -380,61 +419,40 @@ class MapView(QLabel):
         x_world, y_world = self.clicked_goal_world
         x_pix, y_pix = self.world_to_map_pixel(x_world, y_world)
 
-        painter.setPen(QPen(QColor(124, 58, 237), 2.5))
+        painter.setPen(QPen(QColor(124, 58, 237), 1.5))
         painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(QRectF(x_pix - 10, y_pix - 10, 20, 20))
+        painter.drawEllipse(QRectF(x_pix - 6, y_pix - 6, 12, 12))
 
-        arrow_len = 26
+        arrow_len = 15
         end_x = x_pix + arrow_len * math.cos(self.clicked_goal_yaw)
         end_y = y_pix - arrow_len * math.sin(self.clicked_goal_yaw)
         painter.drawLine(int(x_pix), int(y_pix), int(end_x), int(end_y))
 
-        head_size = 6
-        angle1 = self.clicked_goal_yaw + math.radians(150)
-        angle2 = self.clicked_goal_yaw - math.radians(150)
-        hx1 = end_x + head_size * math.cos(angle1)
-        hy1 = end_y - head_size * math.sin(angle1)
-        hx2 = end_x + head_size * math.cos(angle2)
-        hy2 = end_y - head_size * math.sin(angle2)
-        painter.drawLine(int(end_x), int(end_y), int(hx1), int(hy1))
-        painter.drawLine(int(end_x), int(end_y), int(hx2), int(hy2))
-
     def draw_arm_station(self, painter):
-        b_point = None
-        for name, point in self.points.items():
-            if 'point_b' in name.lower():
-                b_point = point
-                break
-
+        b_point = self.get_b_reference_point()
         if b_point is None:
             return
 
         bx, by = self.world_to_map_pixel(b_point['x'], b_point['y'])
 
-        base_x = bx + 38
-        base_y = by - 6
+        # keep UR arm fixed as requested
+        base_x = bx + 18
+        base_y = by - 5
 
-        painter.setPen(QPen(QColor(71, 85, 105), 2))
+        painter.setPen(QPen(QColor(71, 85, 105), 1.0))
         painter.setBrush(QBrush(QColor(148, 163, 184)))
-        painter.drawRect(QRectF(base_x, base_y, 22, 14))
+        painter.drawRect(QRectF(base_x, base_y, 11, 7))
 
-        painter.setPen(QPen(QColor(30, 41, 59), 3))
-        painter.drawLine(int(base_x + 11), int(base_y), int(base_x + 11), int(base_y - 18))
-        painter.drawLine(int(base_x + 11), int(base_y - 18), int(base_x + 27), int(base_y - 28))
-        painter.drawLine(int(base_x + 27), int(base_y - 28), int(base_x + 19), int(base_y - 38))
+        painter.setPen(QPen(QColor(30, 41, 59), 1.6))
+        painter.drawLine(int(base_x + 5.5), int(base_y), int(base_x + 5.5), int(base_y - 9))
+        painter.drawLine(int(base_x + 5.5), int(base_y - 9), int(base_x + 13), int(base_y - 14))
+        painter.drawLine(int(base_x + 13), int(base_y - 14), int(base_x + 10), int(base_y - 19))
 
-        claw = QPolygonF([
-            QPointF(base_x + 17, base_y - 39),
-            QPointF(base_x + 22, base_y - 44),
-            QPointF(base_x + 25, base_y - 38)
-        ])
-        painter.setBrush(QBrush(QColor(59, 130, 246)))
-        painter.drawPolygon(claw)
-
-        font = QFont('Arial', 8, QFont.Bold)
+        font = QFont('Arial', 5, QFont.Bold)
         painter.setFont(font)
-        painter.setPen(QPen(QColor(30, 41, 59), 1))
-        painter.drawText(int(base_x - 4), int(base_y + 26), 'UR ARM')
+        painter.setPen(QPen(QColor(30, 41, 59), 0.8))
+        tx, ty = self.clamp_text_position(base_x - 1, base_y + 13, 'UR', painter)
+        painter.drawText(int(tx), int(ty), 'UR')
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -481,7 +499,7 @@ class DeliveryGui(QWidget):
 
     def init_ui(self):
         self.setWindowTitle('TurtleBot 4 Delivery System')
-        self.setGeometry(20, 20, 1820, 1020)
+        self.setGeometry(10, 10, 1880, 1040)
         self.setStyleSheet("""
             QWidget { background-color: #eef2f7; font-family: Arial; color: #1f2937; }
             QPushButton {
@@ -643,7 +661,7 @@ class DeliveryGui(QWidget):
 
         left_frame = QFrame()
         left_frame.setLayout(left_layout)
-        left_frame.setFixedWidth(290)
+        left_frame.setFixedWidth(270)
         left_frame.setStyleSheet(
             'QFrame { background: #ffffff; border-radius: 22px; border: 1px solid #dbe2ea; padding: 12px; }'
         )
@@ -714,7 +732,7 @@ class DeliveryGui(QWidget):
 
         right_frame = QFrame()
         right_frame.setLayout(right_layout)
-        right_frame.setFixedWidth(335)
+        right_frame.setFixedWidth(315)
         right_frame.setStyleSheet('QFrame { background: transparent; border: none; }')
 
         main_layout = QHBoxLayout()
@@ -855,6 +873,7 @@ class DeliveryGui(QWidget):
         x_world, y_world = self.map_view.clicked_goal_world
         yaw = self.map_view.clicked_goal_yaw
         self.ros_node.send_dynamic_goal(x_world, y_world, yaw)
+        self.ros_node.send_command('run_dynamic_goal')
 
     def clear_clicked_goal(self):
         self.map_view.clicked_goal_world = None
@@ -929,6 +948,7 @@ class DeliveryGui(QWidget):
 
         task_string = ','.join(items)
         self.ros_node.send_task_list(task_string)
+        self.ros_node.send_command('run_task_list')
 
     def save_template(self):
         template_name = self.template_name_input.text().strip()
@@ -979,6 +999,7 @@ class DeliveryGui(QWidget):
 
         task_string = ','.join(templates[template_name])
         self.ros_node.send_task_list(task_string)
+        self.ros_node.send_command('run_task_list')
 
     def create_delivery_request(self):
         item = self.request_item_input.text().strip()
@@ -1020,6 +1041,7 @@ class DeliveryGui(QWidget):
         task_string = f'{pickup},{destination}'
         self.ros_node.add_log(f'REQUEST RUN -> item={item}, pickup={pickup}, destination={destination}')
         self.ros_node.send_task_list(task_string)
+        self.ros_node.send_command('run_task_list')
 
     def send_gui_command(self, command: str):
         try:
