@@ -28,3 +28,11 @@ UR ARM:
 python3 ~/ur_bridge/ur_bridge.py
 
 nc 192.168.50.3 29999
+
+TURTLEBOT 4 DOCK :  
+ros2 action send_goal /dock irobot_create_msgs/action/Dock "{}"
+
+ros2 action send_goal /undock irobot_create_msgs/action/Undock "{}"
+
+
+
