@@ -9,3 +9,5 @@ ros2 topic pub --once /delivery_command std_msgs/msg/String "{data: 'stop'}"
 ros2 topic pub --once /delivery_command std_msgs/msg/String "{data: 'start_delivery'}"
 
 ros2 topic pub /delivery_command std_msgs/msg/String "{data: 'return_items'}"
+
+ros2 topic pub --once /delivery_command std_msgs/msg/String "{data: 'return_items'}"
