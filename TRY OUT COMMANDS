@@ -1,0 +1,9 @@
+ros2 topic pub --once /delivery_command std_msgs/msg/String "{data: 'undock_robot'}"
+
+ros2 topic pub --once /delivery_command std_msgs/msg/String "{data: 'go_charge'}"
+
+ros2 topic pub --once /delivery_command std_msgs/msg/String "{data: 'dock_robot'}"
+
+ros2 topic pub --once /delivery_command std_msgs/msg/String "{data: 'stop'}"
+
+ros2 topic pub --once /delivery_command std_msgs/msg/String "{data: 'start_delivery'}"
