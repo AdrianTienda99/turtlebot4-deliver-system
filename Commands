@@ -16,6 +16,7 @@ python3 /root/delivery_robot_project/scripts/delivery_controller.py
 
 python3 /root/delivery_robot_project/gui/delivery_gui.py
 
+python3 ~/delivery_robot_project/scripts/ur_pick_place_manager.py
 
 ros2 launch turtlebot4_navigation localization.launch.py map:=/root/final_map_tb4.yaml
 
