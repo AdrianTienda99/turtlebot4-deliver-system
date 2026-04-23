@@ -3,15 +3,22 @@ ros2 launch ur_robot_driver ur_control.launch.py \
   ur_type:=ur3e \
   robot_ip:=192.168.123.3   
 
+ros2 launch ur_robot_driver ur_control.launch.py ur_type:=ur3e robot_ip:=192.168.123.3
+
+ ros2 launch ur_moveit_config ur_moveit.launch.py ur_type:=ur3e robot_ip:=192.168.123.3 launch_rviz:=true
+
+python3 ~/delivery_robot_project/scripts/move_to_pre_grasp_auto.py
+
 
 CAMERA:
 source /opt/ros/humble/setup.bash
-ros2 run tf2_ros static_transform_publisher --frame-id ur_base --child-frame-id camera_color_optical_frame
+ros2 run tf2_ros static_transform_publisher --frame-id base --child-frame-id camera_color_optical_frame
 
 ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true
 
-python3 ~/delivery_robot_project/scripts/transform_point_to_ur_base.py --ros-args -p target_frame:=ur_base
+python3 ~/delivery_robot_project/scripts/transform_point_to_ur_base.py --ros-args -p target_frame:=base
 
+python3 ~/delivery_robot_project/scripts/click_pixel_node.py
 
 python3 ~/delivery_robot_project/scripts/pixel_to_3d_node.py
 
@@ -24,3 +31,13 @@ ros2 run tf2_ros static_transform_publisher \
 
 
 ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true pointcloud.enable:=true
+
+ros2 topic pub --once /publish_pre_grasp_target std_msgs/msg/String "{data: 'publish'}"
+ros2 topic pub --once /execute_pre_grasp std_msgs/msg/String "{data: 'go'}"
+
+
+python3 ~/delivery_robot_project/scripts/move_to_pre_grasp_auto.py
+
+python3 ~/delivery_robot_project/scripts/pre_grasp_pose_node.py
+
+python3 ~/delivery_robot_project/scripts/pre_grasp_target_latch.py
