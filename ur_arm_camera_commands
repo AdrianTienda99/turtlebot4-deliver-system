@@ -21,3 +21,6 @@ ros2 run tf2_ros static_transform_publisher \
 --roll 0.0 --pitch 0.78 --yaw -1.75 \
 --frame-id ur_base \
 --child-frame-id camera_link
+
+
+ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true pointcloud.enable:=true
