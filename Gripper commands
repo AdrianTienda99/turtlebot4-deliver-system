@@ -1,0 +1,67 @@
+
+OPEN:
+python3 - <<'PY'
+import socket, time
+s=socket.socket(); s.connect(("192.168.123.3",63352))
+for c in ["SET ACT 1","SET GTO 1","SET SPE 150","SET FOR 150","SET POS 0"]:
+    s.sendall((c+"\n").encode()); time.sleep(0.1)
+s.close()
+PY
+
+CLOSE:
+python3 - <<'PY'
+import socket, time
+s=socket.socket(); s.connect(("192.168.123.3",63352))
+for c in ["SET ACT 1","SET GTO 1","SET SPE 150","SET FOR 150","SET POS 255"]:
+    s.sendall((c+"\n").encode()); time.sleep(0.1)
+s.close()
+PY 
+
+
+BOTH:  cat > /tmp/robotiq_test.py <<'PY'
+import socket, time
+
+ROBOT_IP = "192.168.123.3"
+PORT = 63352
+
+def cmd(s, text):
+    s.sendall((text + "\n").encode())
+    time.sleep(0.1)
+    try:
+        print(text, "->", s.recv(1024).decode(errors="ignore").strip())
+    except socket.timeout:
+        print(text, "-> no reply")
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.settimeout(2)
+    s.connect((ROBOT_IP, PORT))
+
+    # Activate
+    cmd(s, "SET ACT 1")
+    cmd(s, "SET GTO 1")
+    cmd(s, "SET SPE 150")
+    cmd(s, "SET FOR 150")
+    time.sleep(1.0)
+
+    print("Status:")
+    cmd(s, "GET STA")
+    cmd(s, "GET POS")
+    cmd(s, "GET FLT")
+
+    print("Closing...")
+    cmd(s, "SET POS 255")
+    time.sleep(2.0)
+    cmd(s, "GET POS")
+    cmd(s, "GET OBJ")
+
+    print("Opening...")
+    cmd(s, "SET POS 0")
+    time.sleep(2.0)
+    cmd(s, "GET POS")
+    cmd(s, "GET OBJ")
+PY
+
+python3 /tmp/robotiq_test.py
+
+python3 ~/delivery_robot_project/scripts/ur_pick_place_manager.py
+
