@@ -1,12 +1,11 @@
 Commands : 
 
-source ~/tb4_clean_env.sh
 source /opt/ros/humble/setup.bash
 export ROS_DOMAIN_ID=55
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_LOCALHOST_ONLY=0
-unset FASTRTPS_DEFAULT_PROFILES_FILE
 unset CYCLONEDDS_URI
+unset FASTRTPS_DEFAULT_PROFILES_FILE
 export RMW_FASTRTPS_USE_QOS_FROM_XML=0
 
 
