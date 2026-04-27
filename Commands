@@ -35,5 +35,9 @@ ros2 action send_goal /dock irobot_create_msgs/action/Dock "{}"
 
 ros2 action send_goal /undock irobot_create_msgs/action/Undock "{}"
 
+CONNECTION WIFI: 
 
+sudo ip route replace 192.168.123.3/32 dev eno1 src 192.168.123.2
+sudo ip route replace 192.168.123.36/32 dev wlo1 src 192.168.123.97
+sudo ip route flush cache
 
