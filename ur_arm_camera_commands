@@ -22,11 +22,10 @@ python3 ~/delivery_robot_project/scripts/click_pixel_node.py
 
 python3 ~/delivery_robot_project/scripts/pixel_to_3d_node.py
 
-source /opt/ros/humble/setup.bash
 ros2 run tf2_ros static_transform_publisher \
 --x 0.60 --y 0.08 --z 0.92 \
 --roll 0.0 --pitch 0.78 --yaw -1.75 \
---frame-id ur_base \
+--frame-id base \
 --child-frame-id camera_link
 
 
