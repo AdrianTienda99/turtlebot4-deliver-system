@@ -1,12 +1,25 @@
 Commands : 
 
 source /opt/ros/humble/setup.bash
+
+
+source ~/ws_slam/install/setup.bash
+
+
 export ROS_DOMAIN_ID=55
+
+
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+
 export ROS_LOCALHOST_ONLY=0
-unset CYCLONEDDS_URI
+
+
 unset FASTRTPS_DEFAULT_PROFILES_FILE
-export RMW_FASTRTPS_USE_QOS_FROM_XML=0
+
+
+unset CYCLONEDDS_URI
+
 
 ros2 run teleop_twist_keyboard teleop_twist_keyboard
 
